@@ -51,6 +51,16 @@ func (keeper Keeper) GetAllVotes(ctx sdk.Context) (votes types.Votes) {
 	return
 }
 
+// GetAllVotesByProposal returns all the votes of the proposal from the store
+func (keeper Keeper) GetAllVotesByProposal(ctx sdk.Context, proposalId uint64) (votes types.Votes) {
+	keeper.IterateVotes(ctx, proposalId, func(vote types.Vote) bool {
+		populateLegacyOption(&vote)
+		votes = append(votes, vote)
+		return false
+	})
+	return
+}
+
 // GetVotes returns all the votes from a proposal
 func (keeper Keeper) GetVotes(ctx sdk.Context, proposalID uint64) (votes types.Votes) {
 	keeper.IterateVotes(ctx, proposalID, func(vote types.Vote) bool {

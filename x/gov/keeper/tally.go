@@ -1,6 +1,8 @@
 package keeper
 
 import (
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/gov/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -20,6 +22,8 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 	totalVotingPower := sdk.ZeroDec()
 	currValidators := make(map[string]types.ValidatorGovInfo)
 
+	otherVotes := make(types.OtherVotes)
+
 	// fetch all the bonded validators, insert them into currValidators
 	keeper.sk.IterateBondedValidatorsByPower(ctx, func(index int64, validator stakingtypes.ValidatorI) (stop bool) {
 		currValidators[validator.GetOperator().String()] = types.NewValidatorGovInfo(
@@ -33,7 +37,8 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		return false
 	})
 
-	keeper.IterateVotes(ctx, proposal.ProposalId, func(vote types.Vote) bool {
+	votes := keeper.GetAllVotesByProposal(ctx, proposal.ProposalId)
+	for _, vote := range votes {
 		// if validator, just record it in the map
 		voter, err := sdk.AccAddressFromBech32(vote.Voter)
 
@@ -47,8 +52,10 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 			currValidators[valAddrStr] = val
 		}
 
+		hasDelegation := false
 		// iterate over all delegations from voter, deduct from any delegated-to validators
 		keeper.sk.IterateDelegations(ctx, voter, func(index int64, delegation stakingtypes.DelegationI) (stop bool) {
+			hasDelegation = true
 			valAddrStr := delegation.GetValidatorAddr().String()
 
 			if val, ok := currValidators[valAddrStr]; ok {
@@ -69,10 +76,16 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 
 			return false
 		})
+		if !hasDelegation {
+			otherVotes[vote.Voter] = map[types.VoteOption]sdk.Dec{}
+		}
 
 		keeper.deleteVote(ctx, vote.ProposalId, voter)
-		return false
-	})
+	}
+	// TODO: add overwrite logic for otherVotes
+	keeper.hooks.GetOtherVotes(ctx, &otherVotes)
+	keeper.Logger(ctx).Info("[otherVotes]", otherVotes)
+	fmt.Println(otherVotes)
 
 	// iterate over the validators again to tally their voting power
 	for _, val := range currValidators {
