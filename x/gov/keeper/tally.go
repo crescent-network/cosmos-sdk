@@ -23,6 +23,12 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 	currValidators := make(map[string]types.ValidatorGovInfo)
 
 	otherVotes := make(types.OtherVotes)
+	// TODO: Get Liquid Validator list, Power, Balance
+	// cosmos1qf3v4kns89qg42xwqhek5cmjw9fsr0ssy7z0jwcjy2dgz6pvjnyq0xf9dk
+	//proxyAcc, err := sdk.AccAddressFromHex("0262CADA7039408AA8CE05F36A6372715301BE102784F93B12229A81682C94C8")
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	// fetch all the bonded validators, insert them into currValidators
 	keeper.sk.IterateBondedValidatorsByPower(ctx, func(index int64, validator stakingtypes.ValidatorI) (stop bool) {
@@ -37,14 +43,19 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		return false
 	})
 
-	votes := keeper.GetAllVotesByProposal(ctx, proposal.ProposalId)
+	votes := keeper.GetVotes(ctx, proposal.ProposalId)
+	keeper.hooks.GetOtherVotes(ctx, &votes, &otherVotes)
 	for _, vote := range votes {
 		// if validator, just record it in the map
 		voter, err := sdk.AccAddressFromBech32(vote.Voter)
-
 		if err != nil {
 			panic(err)
 		}
+		//defer keeper.deleteVote(ctx, vote.ProposalId, voter)
+		// proxyAcc can't vote
+		//if voter.Equals(proxyAcc) {
+		//	return false
+		//}
 
 		valAddrStr := sdk.ValAddress(voter.Bytes()).String()
 		if val, ok := currValidators[valAddrStr]; ok {
@@ -52,10 +63,26 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 			currValidators[valAddrStr] = val
 		}
 
-		hasDelegation := false
+		if ovote, ok := otherVotes[vote.Voter]; ok {
+			for valAddrStr, optionMap := range ovote {
+				valAddr, err := sdk.ValAddressFromBech32(valAddrStr)
+				if err != nil {
+					panic(err)
+				}
+				if val, ok := currValidators[valAddrStr]; ok {
+					for option, power := range optionMap {
+						val.DelegatorDeductions = val.DelegatorDeductions.Add(power)
+						results[option] = results[option].Add(power)
+						totalVotingPower = totalVotingPower.Add(power)
+						fmt.Println(valAddr.String(), option, power)
+					}
+					currValidators[valAddrStr] = val
+				}
+			}
+		}
+
 		// iterate over all delegations from voter, deduct from any delegated-to validators
 		keeper.sk.IterateDelegations(ctx, voter, func(index int64, delegation stakingtypes.DelegationI) (stop bool) {
-			hasDelegation = true
 			valAddrStr := delegation.GetValidatorAddr().String()
 
 			if val, ok := currValidators[valAddrStr]; ok {
@@ -76,14 +103,10 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 
 			return false
 		})
-		if !hasDelegation {
-			otherVotes[vote.Voter] = map[types.VoteOption]sdk.Dec{}
-		}
 
 		keeper.deleteVote(ctx, vote.ProposalId, voter)
 	}
 	// TODO: add overwrite logic for otherVotes
-	keeper.hooks.GetOtherVotes(ctx, &otherVotes)
 	keeper.Logger(ctx).Info("[otherVotes]", otherVotes)
 	fmt.Println(otherVotes)
 

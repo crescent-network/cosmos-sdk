@@ -40,8 +40,8 @@ func (h MultiGovHooks) AfterProposalVotingPeriodEnded(ctx sdk.Context, proposalI
 		h[i].AfterProposalVotingPeriodEnded(ctx, proposalID)
 	}
 }
-func (h MultiGovHooks) GetOtherVotes(ctx sdk.Context, votes *OtherVotes) {
+func (h MultiGovHooks) GetOtherVotes(ctx sdk.Context, votes *Votes, otherVotes *OtherVotes) {
 	for i := range h {
-		h[i].GetOtherVotes(ctx, votes)
+		h[i].GetOtherVotes(ctx, votes, otherVotes)
 	}
 }
