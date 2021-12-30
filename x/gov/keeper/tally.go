@@ -1,8 +1,6 @@
 package keeper
 
 import (
-	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/gov/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -23,12 +21,6 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 	currValidators := make(map[string]types.ValidatorGovInfo)
 
 	otherVotes := make(types.OtherVotes)
-	// TODO: Get Liquid Validator list, Power, Balance
-	// cosmos1qf3v4kns89qg42xwqhek5cmjw9fsr0ssy7z0jwcjy2dgz6pvjnyq0xf9dk
-	//proxyAcc, err := sdk.AccAddressFromHex("0262CADA7039408AA8CE05F36A6372715301BE102784F93B12229A81682C94C8")
-	//if err != nil {
-	//	panic(err)
-	//}
 
 	// fetch all the bonded validators, insert them into currValidators
 	keeper.sk.IterateBondedValidatorsByPower(ctx, func(index int64, validator stakingtypes.ValidatorI) (stop bool) {
@@ -51,11 +43,6 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		if err != nil {
 			panic(err)
 		}
-		//defer keeper.deleteVote(ctx, vote.ProposalId, voter)
-		// proxyAcc can't vote
-		//if voter.Equals(proxyAcc) {
-		//	return false
-		//}
 
 		valAddrStr := sdk.ValAddress(voter.Bytes()).String()
 		if val, ok := currValidators[valAddrStr]; ok {
@@ -64,19 +51,16 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		}
 
 		if ovote, ok := otherVotes[vote.Voter]; ok {
-			for valAddrStr, optionMap := range ovote {
-				valAddr, err := sdk.ValAddressFromBech32(valAddrStr)
-				if err != nil {
-					panic(err)
-				}
+			for valAddrStr, power := range ovote {
 				if val, ok := currValidators[valAddrStr]; ok {
-					for option, power := range optionMap {
-						val.DelegatorDeductions = val.DelegatorDeductions.Add(power)
-						results[option] = results[option].Add(power)
-						totalVotingPower = totalVotingPower.Add(power)
-						fmt.Println(valAddr.String(), option, power)
-					}
+					val.DelegatorDeductions = val.DelegatorDeductions.Add(power)
 					currValidators[valAddrStr] = val
+
+					for _, option := range vote.Options {
+						subPower := power.Mul(option.Weight)
+						results[option.Option] = results[option.Option].Add(subPower)
+					}
+					totalVotingPower = totalVotingPower.Add(power)
 				}
 			}
 		}
@@ -106,9 +90,7 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 
 		keeper.deleteVote(ctx, vote.ProposalId, voter)
 	}
-	// TODO: add overwrite logic for otherVotes
 	keeper.Logger(ctx).Info("[otherVotes]", otherVotes)
-	fmt.Println(otherVotes)
 
 	// iterate over the validators again to tally their voting power
 	for _, val := range currValidators {
