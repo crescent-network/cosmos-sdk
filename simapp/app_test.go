@@ -48,6 +48,20 @@ func TestSimAppExportAndBlockedAddrs(t *testing.T) {
 		)
 	}
 
+	sampleAddr := "cosmos1qf3v4kns89qg42xwqhek5cmjw9fsr0ssy7z0jwcjy2dgz6pvjnyq0xf9dk"
+	dynamicBlockedAddr, err := sdk.AccAddressFromBech32(sampleAddr)
+	require.NoError(t, err)
+	res := app.BankKeeper.BlockedAddr(ctx, dynamicBlockedAddr)
+	require.False(t, res)
+	app.BankKeeper.AddBlockedAddr(ctx, dynamicBlockedAddr)
+	res = app.BankKeeper.BlockedAddr(ctx, dynamicBlockedAddr)
+	require.True(t, res)
+	blockedAddrs := app.BankKeeper.GetAllBlockedAddrs(ctx)
+	require.Equal(t, blockedAddrs, []string{sampleAddr})
+	app.BankKeeper.RemoveBlockedAddr(ctx, dynamicBlockedAddr)
+	res = app.BankKeeper.BlockedAddr(ctx, dynamicBlockedAddr)
+	require.False(t, res)
+
 	genesisState := NewDefaultGenesisState(encCfg.Marshaler)
 	stateBytes, err := json.MarshalIndent(genesisState, "", "  ")
 	require.NoError(t, err)

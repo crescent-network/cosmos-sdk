@@ -24,6 +24,9 @@ type SendKeeper interface {
 	IsSendEnabledCoins(ctx sdk.Context, coins ...sdk.Coin) error
 
 	BlockedAddr(ctx sdk.Context, addr sdk.AccAddress) bool
+	GetAllBlockedAddrs(ctx sdk.Context) (blockedAddrs []string)
+	AddBlockedAddr(ctx sdk.Context, addr sdk.AccAddress)
+	RemoveBlockedAddr(ctx sdk.Context, addr sdk.AccAddress)
 }
 
 var _ SendKeeper = (*BaseSendKeeper)(nil)
@@ -289,6 +292,7 @@ func (k BaseSendKeeper) BlockedAddr(ctx sdk.Context, addr sdk.AccAddress) bool {
 	return k.blockedAddrs[addr.String()] || ctx.KVStore(k.storeKey).Has(types.BlockedAddrKey(addr))
 }
 
+// GetAllBlockedAddrs returns a list of blocked addresses.
 func (k BaseSendKeeper) GetAllBlockedAddrs(ctx sdk.Context) (blockedAddrs []string) {
 	store := ctx.KVStore(k.storeKey)
 	iter := sdk.KVStorePrefixIterator(store, types.BlockedAddrsPrefix)
@@ -304,8 +308,8 @@ func (k BaseSendKeeper) AddBlockedAddr(ctx sdk.Context, addr sdk.AccAddress) {
 	ctx.KVStore(k.storeKey).Set(types.BlockedAddrKey(addr), []byte{})
 }
 
-// DelBlockedAddr delete a given address to blocked address map.
-func (k BaseSendKeeper) DelBlockedAddr(ctx sdk.Context, addr sdk.AccAddress) {
+// RemoveBlockedAddr delete a given address to blocked address map.
+func (k BaseSendKeeper) RemoveBlockedAddr(ctx sdk.Context, addr sdk.AccAddress) {
 	store := ctx.KVStore(k.storeKey)
 	if store.Has(types.BlockedAddrKey(addr)) {
 		store.Delete(types.BlockedAddrKey(addr))
