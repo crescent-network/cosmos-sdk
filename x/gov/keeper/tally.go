@@ -55,13 +55,12 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 				if val, ok := currValidators[valAddrStr]; ok {
 					val.DelegatorDeductions = val.DelegatorDeductions.Add(power)
 					currValidators[valAddrStr] = val
-
-					for _, option := range vote.Options {
-						subPower := power.Mul(option.Weight)
-						results[option.Option] = results[option.Option].Add(subPower)
-					}
-					totalVotingPower = totalVotingPower.Add(power)
 				}
+				for _, option := range vote.Options {
+					subPower := power.Mul(option.Weight)
+					results[option.Option] = results[option.Option].Add(subPower)
+				}
+				totalVotingPower = totalVotingPower.Add(power)
 			}
 		}
 
