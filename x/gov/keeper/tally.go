@@ -20,8 +20,6 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 	totalVotingPower := sdk.ZeroDec()
 	currValidators := make(map[string]types.ValidatorGovInfo)
 
-	otherVotes := make(types.OtherVotes)
-
 	// fetch all the bonded validators, insert them into currValidators
 	keeper.sk.IterateBondedValidatorsByPower(ctx, func(index int64, validator stakingtypes.ValidatorI) (stop bool) {
 		currValidators[validator.GetOperator().String()] = types.NewValidatorGovInfo(
@@ -35,6 +33,7 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		return false
 	})
 
+	otherVotes := make(types.OtherVotes)
 	votes := keeper.GetVotes(ctx, proposal.ProposalId)
 	keeper.hooks.GetOtherVotes(ctx, &votes, &otherVotes)
 	for _, vote := range votes {
@@ -51,12 +50,10 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		}
 
 		if ovote, ok := otherVotes[vote.Voter]; ok {
-			for valAddrStr, shares := range ovote {
+			for valAddrStr, votingPower := range ovote {
 				if val, ok := currValidators[valAddrStr]; ok {
-					val.DelegatorDeductions = val.DelegatorDeductions.Add(shares)
+					val.DelegatorDeductions = val.DelegatorDeductions.Add(votingPower)
 					currValidators[valAddrStr] = val
-
-					votingPower := shares.MulInt(val.BondedTokens).Quo(val.DelegatorShares)
 
 					for _, option := range vote.Options {
 						subPower := votingPower.Mul(option.Weight)
@@ -92,7 +89,6 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 
 		keeper.deleteVote(ctx, vote.ProposalId, voter)
 	}
-	keeper.Logger(ctx).Info("[otherVotes]", otherVotes)
 
 	// iterate over the validators again to tally their voting power
 	for _, val := range currValidators {

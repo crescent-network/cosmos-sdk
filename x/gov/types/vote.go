@@ -24,7 +24,7 @@ func (v Vote) String() string {
 // Votes is a collection of Vote objects
 type Votes []Vote
 
-// OtherVotes is delShares map by validators by voters
+// OtherVotes is votingPower map by validators by voters
 type OtherVotes map[string]map[string]sdk.Dec
 
 // Equal returns true if two slices (order-dependant) of votes are equal.
