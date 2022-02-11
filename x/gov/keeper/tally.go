@@ -51,8 +51,11 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 
 		if ovote, ok := otherVotes[vote.Voter]; ok {
 			for valAddrStr, votingPower := range ovote {
-				if val, ok := currValidators[valAddrStr]; ok {
-					val.DelegatorDeductions = val.DelegatorDeductions.Add(votingPower)
+				if val, ok := currValidators[valAddrStr]; ok && val.BondedTokens.IsPositive() {
+
+					// total shares * voting power tokens / bonded
+					delShares := val.DelegatorShares.MulInt(votingPower.TruncateInt()).QuoInt(val.BondedTokens)
+					val.DelegatorDeductions = val.DelegatorDeductions.Add(delShares)
 					currValidators[valAddrStr] = val
 
 					for _, option := range vote.Options {
