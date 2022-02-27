@@ -43,9 +43,9 @@ func (keeper Keeper) AfterProposalVotingPeriodEnded(ctx sdk.Context, proposalID 
 	}
 }
 
-// GetOtherVotes
-func (keeper Keeper) GetOtherVotes(ctx sdk.Context, votes *types.Votes, otherVotes *types.OtherVotes) {
+// SetAdditionalVotingPowers - call hook if registered
+func (keeper Keeper) SetAdditionalVotingPowers(ctx sdk.Context, votes types.Votes, votingPowers *types.AdditionalVotingPowers) {
 	if keeper.hooks != nil {
-		keeper.hooks.GetOtherVotes(ctx, votes, otherVotes)
+		keeper.hooks.SetAdditionalVotingPowers(ctx, votes, votingPowers)
 	}
 }

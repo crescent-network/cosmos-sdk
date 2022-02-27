@@ -33,9 +33,9 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 		return false
 	})
 
-	otherVotes := make(types.OtherVotes)
+	additionalVotingPower := types.AdditionalVotingPowers{}
 	votes := keeper.GetVotes(ctx, proposal.ProposalId)
-	keeper.hooks.GetOtherVotes(ctx, &votes, &otherVotes)
+	keeper.hooks.SetAdditionalVotingPowers(ctx, votes, &additionalVotingPower)
 	for _, vote := range votes {
 		// if validator, just record it in the map
 		voter, err := sdk.AccAddressFromBech32(vote.Voter)
@@ -49,7 +49,7 @@ func (keeper Keeper) Tally(ctx sdk.Context, proposal types.Proposal) (passes boo
 			currValidators[valAddrStr] = val
 		}
 
-		if ovote, ok := otherVotes[vote.Voter]; ok {
+		if ovote, ok := additionalVotingPower[vote.Voter]; ok {
 			for valAddrStr, votingPower := range ovote {
 				if val, ok := currValidators[valAddrStr]; ok && val.BondedTokens.IsPositive() {
 
