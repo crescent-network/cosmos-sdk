@@ -99,6 +99,9 @@ func (c configurator) runModuleMigrations(ctx sdk.Context, moduleName string, fr
 		return sdkerrors.Wrapf(sdkerrors.ErrNotFound, "no migrations found for module %s", moduleName)
 	}
 
+	if moduleName == "farming" || moduleName == "mint" || moduleName == "liquidity" {
+		fromVersion = 1
+	}
 	// Run in-place migrations for the module sequentially until toVersion.
 	for i := fromVersion; i < toVersion; i++ {
 		migrateFn, found := moduleMigrationsMap[i]
