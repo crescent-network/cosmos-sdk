@@ -343,6 +343,7 @@ func NewSimApp(
 		authz.ModuleName, feegrant.ModuleName,
 		paramstypes.ModuleName, vestingtypes.ModuleName,
 	)
+	app.mm.SetOrderMidBlockers()
 	app.mm.SetOrderEndBlockers(
 		crisistypes.ModuleName, govtypes.ModuleName, stakingtypes.ModuleName,
 		capabilitytypes.ModuleName, authtypes.ModuleName, banktypes.ModuleName, distrtypes.ModuleName,
@@ -395,6 +396,7 @@ func NewSimApp(
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
+	app.SetMidBlocker(app.MidBlocker)
 
 	anteHandler, err := ante.NewAnteHandler(
 		ante.HandlerOptions{
@@ -427,6 +429,11 @@ func (app *SimApp) Name() string { return app.BaseApp.Name() }
 // BeginBlocker application updates every begin block
 func (app *SimApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	return app.mm.BeginBlock(ctx, req)
+}
+
+func (app *SimApp) MidBlocker(ctx sdk.Context, req abci.RequestMidBlock) abci.ResponseMidBlock {
+	events := app.mm.MidBlock(ctx)
+	return abci.ResponseMidBlock{Events: events}
 }
 
 // EndBlocker application updates every end block

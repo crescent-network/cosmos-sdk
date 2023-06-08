@@ -186,6 +186,12 @@ type BeginBlockAppModule interface {
 	BeginBlock(sdk.Context, abci.RequestBeginBlock)
 }
 
+// MidBlockAppModule is an extension interface that contains information about the AppModule and BeginBlock.
+type MidBlockAppModule interface {
+	AppModule
+	MidBlock(sdk.Context)
+}
+
 // EndBlockAppModule is an extension interface that contains information about the AppModule and EndBlock.
 type EndBlockAppModule interface {
 	AppModule
@@ -237,6 +243,7 @@ type Manager struct {
 	OrderInitGenesis   []string
 	OrderExportGenesis []string
 	OrderBeginBlockers []string
+	OrderMidBlockers   []string
 	OrderEndBlockers   []string
 	OrderMigrations    []string
 }
@@ -255,6 +262,7 @@ func NewManager(modules ...AppModule) *Manager {
 		OrderInitGenesis:   modulesStr,
 		OrderExportGenesis: modulesStr,
 		OrderBeginBlockers: modulesStr,
+		OrderMidBlockers:   modulesStr,
 		OrderEndBlockers:   modulesStr,
 	}
 }
@@ -275,6 +283,11 @@ func (m *Manager) SetOrderExportGenesis(moduleNames ...string) {
 func (m *Manager) SetOrderBeginBlockers(moduleNames ...string) {
 	m.assertNoForgottenModules("SetOrderBeginBlockers", moduleNames)
 	m.OrderBeginBlockers = moduleNames
+}
+
+// SetOrderMidBlockers sets the order of set mid-blocker calls
+func (m *Manager) SetOrderMidBlockers(moduleNames ...string) {
+	m.OrderMidBlockers = moduleNames
 }
 
 // SetOrderEndBlockers sets the order of set end-blocker calls
@@ -495,6 +508,22 @@ func (m *Manager) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) abci.R
 	return abci.ResponseBeginBlock{
 		Events: ctx.EventManager().ABCIEvents(),
 	}
+}
+
+// MidBlock performs mid block functionality for all modules. It creates a
+// child context with an event manager to aggregate events emitted from all
+// modules.
+func (m *Manager) MidBlock(ctx sdk.Context) []abci.Event {
+	ctx = ctx.WithEventManager(sdk.NewEventManager())
+
+	for _, moduleName := range m.OrderMidBlockers {
+		module, ok := m.Modules[moduleName].(MidBlockAppModule)
+		if ok {
+			module.MidBlock(ctx)
+		}
+	}
+
+	return ctx.EventManager().ABCIEvents()
 }
 
 // EndBlock performs end block functionality for all modules. It creates a

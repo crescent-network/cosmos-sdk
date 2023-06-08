@@ -190,6 +190,13 @@ func (app *BaseApp) BeginBlock(req abci.RequestBeginBlock) (res abci.ResponseBeg
 	return res
 }
 
+func (app *BaseApp) MidBlock(req abci.RequestMidBlock) (res abci.ResponseMidBlock) {
+	if app.midBlocker != nil {
+		return app.midBlocker(app.deliverState.ctx, req)
+	}
+	return abci.ResponseMidBlock{}
+}
+
 // EndBlock implements the ABCI interface.
 func (app *BaseApp) EndBlock(req abci.RequestEndBlock) (res abci.ResponseEndBlock) {
 	defer telemetry.MeasureSince(time.Now(), "abci", "end_block")
