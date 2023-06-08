@@ -111,6 +111,12 @@ func TestManagerOrderSetters(t *testing.T) {
 	require.Equal(t, []string{"module1", "module2"}, mm.OrderEndBlockers)
 	mm.SetOrderEndBlockers("module2", "module1")
 	require.Equal(t, []string{"module2", "module1"}, mm.OrderEndBlockers)
+
+	require.Equal(t, []string{"module1", "module2"}, mm.OrderMidBlockers)
+	mm.SetOrderMidBlockers("module2", "module1")
+	require.Equal(t, []string{"module2", "module1"}, mm.OrderMidBlockers)
+	mm.SetOrderMidBlockers("module1")
+	require.Equal(t, []string{"module1"}, mm.OrderMidBlockers)
 }
 
 func TestManager_RegisterInvariants(t *testing.T) {
