@@ -114,6 +114,10 @@ func (s msgServer) CreatePeriodicVestingAccount(goCtx context.Context, msg *type
 		return nil, err
 	}
 
+	if bk.BlockedAddr(to) {
+		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "%s is not allowed to receive funds", msg.ToAddress)
+	}
+
 	if acc := ak.GetAccount(ctx, to); acc != nil {
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "account %s already exists", msg.ToAddress)
 	}
@@ -122,6 +126,10 @@ func (s msgServer) CreatePeriodicVestingAccount(goCtx context.Context, msg *type
 
 	for _, period := range msg.VestingPeriods {
 		totalCoins = totalCoins.Add(period.Amount...)
+	}
+
+	if err := bk.IsSendEnabledCoins(ctx, totalCoins...); err != nil {
+		return nil, err
 	}
 
 	baseAccount := ak.NewAccountWithAddress(ctx, to)
